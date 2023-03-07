@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WS &lt;-&gt; SQL</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        padding: 2rem;
+        font-family: sans-serif;
+      }
+      textarea {
+        font-family: monospace;
+        padding: 0.5rem;
+      }
+      div + div {
+        margin-top: 0.5rem;
+      }
+      span#connStatus {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div>
+        Socket connection status: <span id="connStatus">not connected</span>
+      </div>
+      <div>SQL:</div>
+      <textarea
+        id="queryEditor"
+        placeholder="select * from..."
+        rows="3"
+        cols="100"
+      ></textarea>
+      <button onclick="runQuery()">run</button>
+    </div>
+    <div>
+      <div>Data from socket:</div>
+      <div id="results"></div>
+    </div>
+    <script>
+      const SocketMsg = {
+        UPDATE_CONN_STRING: 'UPDATE_CONN_STRING',
+        RUN_QUERY: 'RUN_QUERY',
+      };
+
+      const ClientMsg = {
+        QUERY_RESULT: 'QUERY_RESULT',
+        QUERY_ERROR: 'QUERY_ERROR',
+      };
+      const ws = new WebSocket('ws://localhost:8080');
+      const send = (data) => ws.send(JSON.stringify(data));
+      const runQuery = () => {
+        const query = document.getElementById('queryEditor').value;
+        document.getElementById('results').innerHTML = 'Loading...';
+        send({
+          type: SocketMsg.RUN_QUERY,
+          data: query,
+        });
+      };
+      ws.addEventListener('open', () => {
+        document.getElementById('connStatus').innerHTML = 'connected!';
+        document.getElementById('connStatus').style.color = 'green';
+      });
+
+      ws.addEventListener('message', function (event) {
+        const msg = JSON.parse(event.data);
+        const elem = document.getElementById('results');
+        switch (msg.type) {
+          case ClientMsg.QUERY_ERROR:
+            elem.innerHTML = msg.data;
+            break;
+          case ClientMsg.QUERY_RESULT:
+            elem.innerHTML = `<pre>${JSON.stringify(msg.data, null, 2)}</pre>`;
+            break;
+          default:
+            break;
+        }
+      });
+    </script>
+  </body>
+</html>
